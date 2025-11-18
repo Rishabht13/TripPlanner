@@ -1,0 +1,88 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { cartAPI } from '../utils/api';
+
+function Cart() {
+  const [cart, setCart] = useState({ items: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await cartAPI.get();
+      setCart(res.data);
+      setError('');
+    } catch (e) {
+      console.error('Cart load error', e);
+      const msg = e?.response?.data?.message || e?.message || 'Failed to load cart';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const total = cart.items?.reduce((sum, it) => sum + it.discountedPrice * it.quantity, 0) || 0;
+
+  const updateQty = async (adId, quantity) => {
+    try {
+      await cartAPI.updateItem(adId, quantity);
+      load();
+    } catch (e) {
+      setError(e?.response?.data?.message || 'Unable to update quantity');
+    }
+  };
+  const removeItem = async (adId) => {
+    await cartAPI.removeItem(adId);
+    load();
+  };
+  const clear = async () => {
+    await cartAPI.clear();
+    load();
+  };
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-3xl font-bold mb-6">Your Cart</h1>
+      {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
+      {cart.items?.length === 0 ? (
+        <div className="bg-white p-6 rounded shadow text-gray-600">Your cart is empty.</div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {cart.items.map(it => (
+            <div key={String(it.ad)} className="bg-white rounded shadow p-4 flex gap-4 items-center">
+              <img src={it.imageUrl} alt={it.title} className="w-28 h-20 object-cover rounded" />
+              <div className="flex-1">
+                <div className="font-semibold">{it.title}</div>
+                <div className="text-sm text-gray-600 capitalize">{it.category}</div>
+                <div className="mt-1 text-blue-600 font-semibold">₹{it.discountedPrice} <span className="text-xs text-gray-400 line-through ml-2">₹{it.price}</span></div>
+                <div className="text-xs text-gray-500 mt-1">Vacancies left: {it.availableSlots}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => updateQty(it.ad, Math.max(1, (it.quantity || 1) - 1))} className="px-2 py-1 border rounded">-</button>
+                <span className="w-8 text-center">{it.quantity}</span>
+                <button onClick={() => updateQty(it.ad, (it.quantity || 1) + 1)} className="px-2 py-1 border rounded">+</button>
+              </div>
+              <button onClick={() => removeItem(it.ad)} className="text-red-600 hover:underline text-sm">Remove</button>
+            </div>
+          ))}
+          <div className="bg-white rounded shadow p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="text-lg font-semibold">Total: ₹{total}</div>
+            <div className="flex gap-3">
+              <button onClick={clear} className="px-4 py-2 border rounded">Clear Cart</button>
+              <Link to="/checkout" className="px-4 py-2 bg-green-600 text-white rounded text-center">Proceed to Checkout</Link>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Cart;
+
+
