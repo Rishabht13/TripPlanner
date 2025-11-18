@@ -17,12 +17,14 @@ function Login() {
     setLoading(true);
 
     try {
-      const data = await login(email, password);
-      const role = data?.user?.role || roleType;
-      navigate(role === 'admin' ? '/admin' : '/dashboard');
+      await login(email, password);
+      // Wait a tiny bit to ensure state is updated, then navigate
+      // The PrivateRoute will handle redirect if user is set
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 100);
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
-    } finally {
+      setError(err.response?.data?.message || err.message || 'Login failed');
       setLoading(false);
     }
   };

@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { cartAPI } from "../utils/api";
 import { adsAPI } from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 
 function AdsDashboard() {
+  const { loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("priceAsc");
@@ -12,21 +14,26 @@ function AdsDashboard() {
   const [ads, setAds] = useState([]);
 
   useEffect(() => {
+    if (authLoading) return;
     const fetchAll = async () => {
-      const [h, t, m] = await Promise.all([
-        adsAPI.getAll("hotels"),
-        adsAPI.getAll("trips"),
-        adsAPI.getAll("transport"),
-      ]);
-      const list = [
-        ...h.data.map((a) => ({ ...a, category: "hotels" })),
-        ...t.data.map((a) => ({ ...a, category: "trips" })),
-        ...m.data.map((a) => ({ ...a, category: "transport" })),
-      ];
-      setAds(list);
+      try {
+        const [h, t, m] = await Promise.all([
+          adsAPI.getAll("hotels"),
+          adsAPI.getAll("trips"),
+          adsAPI.getAll("transport"),
+        ]);
+        const list = [
+          ...h.data.map((a) => ({ ...a, category: "hotels" })),
+          ...t.data.map((a) => ({ ...a, category: "trips" })),
+          ...m.data.map((a) => ({ ...a, category: "transport" })),
+        ];
+        setAds(list);
+      } catch (err) {
+        console.error('Failed to load ads', err);
+      }
     };
     fetchAll();
-  }, []);
+  }, [authLoading]);
 
   const combined = useMemo(() => {
     const pool = ads.filter(

@@ -1,23 +1,55 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { tripsAPI } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
 
 function Dashboard() {
+  const { user, loading: authLoading } = useAuth();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Wait for auth to finish loading and ensure user is logged in
+    if (authLoading) {
+      return;
+    }
+    if (!user) {
+      setLoading(false);
+      setError('Please log in to view your trips');
+      return;
+    }
+    // Double-check token exists before making request
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      setError('Authentication required. Please log in again.');
+      return;
+    }
     fetchTrips();
-  }, []);
+  }, [authLoading, user]);
 
   const fetchTrips = async () => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Authentication required. Please log in again.');
+        setLoading(false);
+        return;
+      }
       const response = await tripsAPI.getAll();
       setTrips(response.data);
+      setError('');
     } catch (err) {
-      setError('Failed to load trips');
+      console.error('Failed to fetch trips:', err);
+      if (err?.response?.status === 401) {
+        // Don't clear token here - let AuthContext handle it via /auth/me
+        // Just show error message
+        setError('Session expired. Please refresh the page or log in again.');
+      } else {
+        setError('Failed to load trips. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

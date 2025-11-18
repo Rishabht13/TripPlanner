@@ -4,17 +4,41 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const apiClient = axios.create({
   baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  } else {
-    delete config.headers.Authorization;
+// Request interceptor - ensures token is always attached
+apiClient.interceptors.request.use(
+  (config) => {
+    // Always read fresh token from localStorage on every request
+    const token = localStorage.getItem('token');
+    if (token && token.trim()) {
+      // Ensure Authorization header is set with Bearer token
+      config.headers.Authorization = `Bearer ${token.trim()}`;
+    } else {
+      // Remove authorization header if no token
+      delete config.headers.Authorization;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
+
+// Response interceptor - handles 401 errors globally
+// NOTE: We don't clear token or redirect here - let AuthContext handle token management
+// The interceptor just passes through the error so components can handle it
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Just pass through 401 errors - let AuthContext and components handle them
+    // This prevents race conditions where token is cleared too early
+    return Promise.reject(error);
+  }
+);
 
 // Trips API
 export const tripsAPI = {

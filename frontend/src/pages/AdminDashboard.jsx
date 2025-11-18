@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { adsAPI, notificationsAPI } from '../utils/api';
 
 function AdminDashboard() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading, user } = useAuth();
   const [version, setVersion] = useState(0);
   const [form, setForm] = useState({ category: 'hotels', title: '', location: '', price: '', imageUrl: '', discountPercent: '', totalSlots: '', description: '' });
   const [file, setFile] = useState(null);
@@ -14,16 +14,16 @@ function AdminDashboard() {
   const [trips, setTrips] = useState([]);
   const [transport, setTransport] = useState([]);
   useEffect(() => {
+    if (authLoading || !user) return;
     Promise.all([
       adsAPI.getAll('hotels'), adsAPI.getAll('trips'), adsAPI.getAll('transport')
     ]).then(([h, t, m]) => { setHotels(h.data); setTrips(t.data); setTransport(m.data); });
-  }, [version]);
+  }, [version, authLoading, user]);
   const [notifications, setNotifications] = useState([]);
   useEffect(() => {
-    if (isAdmin) {
-      notificationsAPI.getAll().then(res => setNotifications(res.data)).catch(() => {});
-    }
-  }, [version, isAdmin]);
+    if (authLoading || !user || !isAdmin) return;
+    notificationsAPI.getAll().then(res => setNotifications(res.data)).catch(() => {});
+  }, [version, isAdmin, authLoading, user]);
 
   if (!isAdmin) {
     return (

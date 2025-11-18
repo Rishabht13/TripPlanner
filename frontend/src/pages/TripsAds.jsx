@@ -3,14 +3,15 @@ import { useAuth } from '../context/AuthContext';
 import { adsAPI, cartAPI } from '../utils/api';
 
 function TripsAds() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading, user } = useAuth();
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState('priceAsc');
   const [itemsVersion, setItemsVersion] = useState(0);
   const [items, setItems] = useState([]);
   useEffect(() => {
-    adsAPI.getAll('trips').then(res => setItems(res.data));
-  }, [itemsVersion]);
+    if (authLoading) return;
+    adsAPI.getAll('trips').then(res => setItems(res.data)).catch(() => {});
+  }, [itemsVersion, authLoading]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = q ? items.filter(a => `${a.title} ${a.location}`.toLowerCase().includes(q)) : items;

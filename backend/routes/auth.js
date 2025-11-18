@@ -2,12 +2,12 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/jwt.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 function signToken(user) {
-  return jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
 function formatUser(user) {

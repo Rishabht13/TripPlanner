@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cartAPI, checkoutAPI } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 function Checkout() {
+  const { user, loading: authLoading } = useAuth();
   const [cart, setCart] = useState({ items: [] });
   const [upiId, setUpiId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -28,8 +30,12 @@ function Checkout() {
   };
 
   useEffect(() => {
+    if (authLoading || !user) {
+      setLoading(false);
+      return;
+    }
     loadCart();
-  }, []);
+  }, [authLoading, user]);
 
   const total = cart.items?.reduce((sum, it) => sum + it.discountedPrice * it.quantity, 0) || 0;
 
