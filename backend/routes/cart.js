@@ -17,10 +17,13 @@ async function getOrCreateCart(userId) {
 async function formatCart(cart) {
   await cart.populate('items.ad', 'availableSlots');
   const formatted = cart.toObject();
-  formatted.items = cart.items.map((item) => ({
-    ...item.toObject(),
-    availableSlots: item.ad?.availableSlots ?? 0,
-  }));
+  formatted.items = cart.items.map((item) => {
+    const itemObj = item.toObject();
+    // Ensure ad is a string ID, not an object
+    itemObj.ad = String(itemObj.ad?._id || itemObj.ad || '');
+    itemObj.availableSlots = item.ad?.availableSlots ?? 0;
+    return itemObj;
+  });
   return formatted;
 }
 
@@ -77,6 +80,12 @@ router.put('/items/:adId', authenticate, async (req, res) => {
   try {
     const { adId } = req.params;
     const { quantity } = req.body;
+    
+    // Validate adId
+    if (!adId || adId === '[object Object]' || adId === 'undefined') {
+      return res.status(400).json({ message: 'Invalid ad ID' });
+    }
+    
     const desiredQty = Math.max(1, Number(quantity) || 1);
     const [cart, ad] = await Promise.all([
       getOrCreateCart(req.user._id),
@@ -84,7 +93,7 @@ router.put('/items/:adId', authenticate, async (req, res) => {
     ]);
     if (!ad) return res.status(404).json({ message: 'Ad not found' });
     const item = cart.items.find(i => String(i.ad) === String(adId));
-    if (!item) return res.status(404).json({ message: 'Item not found' });
+    if (!item) return res.status(404).json({ message: 'Item not found in cart' });
     if (desiredQty > ad.availableSlots) {
       return res.status(400).json({ message: `Only ${ad.availableSlots} slot(s) left` });
     }
@@ -92,6 +101,7 @@ router.put('/items/:adId', authenticate, async (req, res) => {
     await cart.save();
     res.json(await formatCart(cart));
   } catch (e) {
+    console.error('Cart update error:', e);
     res.status(500).json({ message: 'Failed to update cart item', error: e.message });
   }
 });

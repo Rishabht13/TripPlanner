@@ -36,15 +36,31 @@ function Cart() {
 
   const updateQty = async (adId, quantity) => {
     try {
-      await cartAPI.updateItem(adId, quantity);
+      // Ensure adId is a string, not an object
+      const adIdStr = String(adId?._id || adId || '');
+      if (!adIdStr || adIdStr === 'undefined' || adIdStr === '[object Object]') {
+        setError('Invalid item ID');
+        return;
+      }
+      await cartAPI.updateItem(adIdStr, quantity);
       load();
     } catch (e) {
       setError(e?.response?.data?.message || 'Unable to update quantity');
     }
   };
   const removeItem = async (adId) => {
-    await cartAPI.removeItem(adId);
-    load();
+    try {
+      // Ensure adId is a string, not an object
+      const adIdStr = String(adId?._id || adId || '');
+      if (!adIdStr || adIdStr === 'undefined' || adIdStr === '[object Object]') {
+        setError('Invalid item ID');
+        return;
+      }
+      await cartAPI.removeItem(adIdStr);
+      load();
+    } catch (e) {
+      setError(e?.response?.data?.message || 'Unable to remove item');
+    }
   };
   const clear = async () => {
     await cartAPI.clear();
@@ -61,23 +77,46 @@ function Cart() {
         <div className="bg-white p-6 rounded shadow text-gray-600">Your cart is empty.</div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {cart.items.map(it => (
-            <div key={String(it.ad)} className="bg-white rounded shadow p-4 flex gap-4 items-center">
-              <img src={it.imageUrl} alt={it.title} className="w-28 h-20 object-cover rounded" />
+          {cart.items.map(it => {
+            // Get adId as string - handle both object and string formats
+            const adId = String(it.ad?._id || it.ad || '');
+            return (
+            <div key={adId} className="bg-white rounded shadow p-4 flex gap-4 items-center">
+              <img src={it.imageUrl || 'https://via.placeholder.com/112x80'} alt={it.title} className="w-28 h-20 object-cover rounded" />
               <div className="flex-1">
                 <div className="font-semibold">{it.title}</div>
                 <div className="text-sm text-gray-600 capitalize">{it.category}</div>
                 <div className="mt-1 text-blue-600 font-semibold">₹{it.discountedPrice} <span className="text-xs text-gray-400 line-through ml-2">₹{it.price}</span></div>
-                <div className="text-xs text-gray-500 mt-1">Vacancies left: {it.availableSlots}</div>
+                <div className="text-xs text-gray-500 mt-1">Vacancies left: {it.availableSlots ?? 'N/A'}</div>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => updateQty(it.ad, Math.max(1, (it.quantity || 1) - 1))} className="px-2 py-1 border rounded">-</button>
-                <span className="w-8 text-center">{it.quantity}</span>
-                <button onClick={() => updateQty(it.ad, (it.quantity || 1) + 1)} className="px-2 py-1 border rounded">+</button>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => updateQty(adId, Math.max(1, (it.quantity || 1) - 1))} 
+                  className="px-3 py-1 border rounded hover:bg-gray-50 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={it.quantity <= 1}
+                >
+                  −
+                </button>
+                <span className="w-12 text-center font-semibold text-lg">{it.quantity}</span>
+                <button 
+                  onClick={() => {
+                    const newQty = (it.quantity || 1) + 1;
+                    if (it.availableSlots && newQty > it.availableSlots) {
+                      alert(`Only ${it.availableSlots} slot(s) available`);
+                      return;
+                    }
+                    updateQty(adId, newQty);
+                  }} 
+                  className="px-3 py-1 border rounded hover:bg-gray-50 font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={it.availableSlots !== undefined && (it.quantity || 1) >= it.availableSlots}
+                >
+                  +
+                </button>
               </div>
-              <button onClick={() => removeItem(it.ad)} className="text-red-600 hover:underline text-sm">Remove</button>
+              <button onClick={() => removeItem(adId)} className="text-red-600 hover:underline text-sm">Remove</button>
             </div>
-          ))}
+            );
+          })}
           <div className="bg-white rounded shadow p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div className="text-lg font-semibold">Total: ₹{total}</div>
             <div className="flex gap-3">
