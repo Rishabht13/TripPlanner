@@ -1,0 +1,5 @@
+PORT=5000
+MONGODB_URI=mongodb+srv://pt64632_db_user:FHoBlDkm9xP6KWdG@cluster0.pxkzs2g.mongodb.net/
+JWT_SECRET=replace-with-strong-secret
+GEMINI_API_KEY=your-gemini-api-key
+
